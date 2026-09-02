@@ -152,12 +152,16 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
 def get_context(flag=ELEVATION_FLAG):
     '''
     parse and return json dictionary from the --_context= argument.
+    A stray unquoted space in the value (e.g. --set-user-env='a': 'b','c':'d' typed
+    without an enclosing outer quote) makes the shell split it across multiple argv
+    entries -- rejoin everything from the flagged argument onward before parsing, so
+    only a quoting mistake around the OUTER quotes is fatal, not one around an inner value.
     :return: dic
     '''
-    for arg in sys.argv:
+    for i, arg in enumerate(sys.argv):
         if arg.startswith(flag):
             try:
-                ctx = arg.split('=')[1]
+                ctx = ' '.join([arg] + sys.argv[i + 1:]).split('=', 1)[1]
                 if not ctx.startswith('{'):
                     ctx = '{' + ctx
                 if not ctx.endswith('}'):
@@ -306,6 +310,35 @@ def native_sudo_present():
     return os.name == 'nt' and os.path.isfile(native_sudo_path())
 
 
+def already_ahead_of_native_sudo(install_dir):
+    '''
+    Check the PERMANENT system PATH (not os.environ, which won't reflect a change made
+    earlier in the same login session) to see whether `install_dir` already precedes the
+    native sudo.exe's directory, so we don't keep re-warning/re-prompting about a fight
+    that was already won on a previous run.
+
+    :param install_dir: str, the directory this package's sudo.py is installed into.
+    :return: bool, True if `install_dir` is already ahead of native sudo's directory on
+             the system PATH.
+    '''
+    try:
+        with winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE,
+                              r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment',
+                              0, winreg.KEY_READ) as key:
+            current, _ = winreg.QueryValueEx(key, 'PATH')
+    except OSError:
+        return False
+    # raw registry values may contain unexpanded references like "%SystemRoot%\system32"
+    elements = [os.path.normcase(os.path.normpath(os.path.expandvars(e)))
+                for e in current.split(';') if e]
+    target = os.path.normcase(os.path.normpath(install_dir))
+    native_dir = os.path.normcase(os.path.normpath(os.path.dirname(native_sudo_path())))
+    try:
+        return elements.index(target) < elements.index(native_dir)
+    except ValueError:
+        return False
+
+
 def prepend_path_win(directory, whole_machine=True):
     '''
     Move `directory` to the very front of the permanent PATH, so it is searched before
@@ -352,6 +385,8 @@ def warn_if_native_sudo(install_dir):
     :return:
     '''
     if not native_sudo_present():
+        return
+    if already_ahead_of_native_sudo(install_dir):
         return
     native_path = native_sudo_path()
     print()
@@ -442,7 +477,10 @@ if __name__ == "__main__":
             print()
             print('NOTE: a new window is not enough by itself -- log off and back on before')
             print('testing "sudo", so every process picks up the updated PATH/PATHEXT.')
-            time.sleep(5)
+            try:
+                input('Hit <Enter> to continue . . .')
+            except EOFError:
+                pass
         else:
             runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)
     elif any([arg.startswith(PREPEND_PATH_FLAG) for arg in sys.argv]) and os.name == 'nt':
@@ -450,7 +488,10 @@ if __name__ == "__main__":
         # install dir ahead of the native sudo.exe on the system PATH.
         flagged_arg = next(arg for arg in sys.argv if arg.startswith(PREPEND_PATH_FLAG))
         prepend_path_win(flagged_arg.split('=', 1)[1], whole_machine=True)
-        time.sleep(5)
+        try:
+            input('Hit <Enter> to continue . . .')
+        except EOFError:
+            pass
     elif any([arg.startswith("--set-system-env") for arg in sys.argv]) and os.name == 'nt':
         if isUserAdmin():
             ctx = get_context("--set-system-env")
