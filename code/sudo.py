@@ -42,7 +42,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-VERSION = 1.6
+VERSION = 1.7
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 
@@ -244,6 +244,108 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
         input('Hit <Enter> to continue . . .')
 
 
+def user_python_scripts_dir():
+    '''
+    A "for me only" (single-user) Python install adds its own "Scripts" directory to the
+    current user's PATH, and that directory is already writable without elevation. An
+    "all users" install instead goes under Program Files and needs admin rights to touch.
+
+    :return: str or None. The Scripts directory next to the running interpreter, when this
+             looks like a per-user install, else None.
+    '''
+    if os.name != 'nt':
+        return None
+    local_app_data = os.environ.get('LOCALAPPDATA')
+    if not local_app_data:
+        return None
+    exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+    if not os.path.normcase(exe_dir).startswith(os.path.normcase(local_app_data)):
+        return None  # not a per-user install (e.g. Program Files, or a venv)
+    scripts_dir = os.path.join(exe_dir, 'Scripts')
+    return scripts_dir if os.path.isdir(scripts_dir) else None
+
+
+def native_sudo_path():
+    '''
+    Windows 11 (24H2+) can ship its own built-in "sudo.exe" in System32, which will shadow
+    this package's "sudo" command because System32 is searched before C:\\Windows.
+    :return: str, path to the native sudo.exe, whether or not it actually exists.
+    '''
+    system_root = os.environ.get('SystemRoot', r'C:\Windows')
+    return os.path.join(system_root, 'System32', 'sudo.exe')
+
+
+def native_sudo_present():
+    '''
+    :return: bool, True if a native Windows "sudo" command is installed on this machine.
+    '''
+    return os.name == 'nt' and os.path.isfile(native_sudo_path())
+
+
+def prepend_path_win(directory, whole_machine=True):
+    '''
+    Move `directory` to the very front of the permanent PATH, so it is searched before
+    other entries such as C:\\Windows\\System32. Any existing occurrence of `directory`
+    is removed first, so repeated calls do not pile up duplicates.
+    NOTE: process must be "elevated" before making this call when whole_machine=True.
+
+    :param directory: str, the directory to move to the front of PATH.
+    :param whole_machine: bool, if True modify the system (HKLM) PATH, else the user (HKCU) PATH.
+    :return:
+    '''
+    if os.name != 'nt':
+        raise ModuleNotFoundError('Attempting Windows operation on non-Windows')
+
+    subkey = r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment' if whole_machine \
+        else r'Environment'
+    hive = winreg.HKEY_LOCAL_MACHINE if whole_machine else winreg.HKEY_CURRENT_USER
+
+    with winreg.OpenKeyEx(hive, subkey, 0, winreg.KEY_ALL_ACCESS) as key:
+        try:
+            current, value_type = winreg.QueryValueEx(key, 'PATH')
+        except OSError:
+            current, value_type = '', winreg.REG_EXPAND_SZ
+        target = os.path.normcase(os.path.normpath(directory))
+        elements = [e for e in current.split(';') if e and os.path.normcase(os.path.normpath(e)) != target]
+        elements.insert(0, directory)
+        new_path = ';'.join(elements)
+        winreg.SetValueEx(key, 'PATH', 0, value_type, new_path)
+    print('Moved "{}" to the front of the {} PATH.'.format(directory, 'system' if whole_machine else 'user'))
+
+    # tell all the world that a change has been made
+    win32gui.SendMessageTimeout(win32con.HWND_BROADCAST, win32con.WM_SETTINGCHANGE, 0, 'Environment',
+                                win32con.SMTO_ABORTIFHUNG, 1000)
+
+
+def warn_if_native_sudo(install_dir):
+    '''
+    If a native Windows "sudo" is present, warn the user and offer to move `install_dir`
+    ahead of it on the PATH, so this package's "sudo" command wins instead.
+    :param install_dir: str, the directory this package's sudo.py was just installed into.
+    :return:
+    '''
+    if not native_sudo_present():
+        return
+    native_path = native_sudo_path()
+    print()
+    print('WARNING: A native Windows "sudo" command was found at "{}".'.format(native_path))
+    print('The system PATH (which includes System32) is always searched before the user')
+    print('PATH, so the built-in sudo will normally run instead of this package\'s version')
+    print('when you type "sudo" -- even if "{}" is on your own PATH.'.format(install_dir))
+    if not isUserAdmin():
+        print('Re-run this installer as Administrator to move "{}" ahead of it'.format(install_dir))
+        print('on the system PATH.')
+        return
+    try:
+        answer = input('Put this "windows-sudo" version ahead of the native one on the system PATH? [y/N] ')
+    except EOFError:
+        answer = 'n'
+    if answer.strip().lower().startswith('y'):
+        prepend_path_win(install_dir, whole_machine=True)
+    else:
+        print('Leaving PATH unchanged. The native "sudo" will take precedence over this package.')
+
+
 def test(command=None):
     try:
         if isinstance(command, str):
@@ -294,17 +396,22 @@ if __name__ == "__main__":
             call = ['nano', '/etc/hosts']
         runAsAdmin(call)
     elif sys.argv[1] == "--install-sudo-command" and os.name == 'nt':
-        WINDOWS_PATH = r'C:\Windows\sudo.py'
-        print('Installing "sudo" command...')
-        if isUserAdmin():
+        # a single-user Python install already put its own Scripts dir on the user's PATH,
+        # and that directory is writable without elevation -- prefer it over C:\Windows.
+        install_dir = user_python_scripts_dir() or r'C:\Windows'
+        whole_machine = (install_dir == r'C:\Windows')
+        WINDOWS_PATH = os.path.join(install_dir, 'sudo.py')
+        print('Installing "sudo" command into "{}"...'.format(install_dir))
+        if not whole_machine or isUserAdmin():
             shutil.copy2(__file__, WINDOWS_PATH)
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\argv_quote.py',
-                         os.path.dirname(WINDOWS_PATH) + r'\argv_quote.py')
+                         os.path.join(install_dir, 'argv_quote.py'))
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\sudo_pause.bat',
-                         os.path.dirname(WINDOWS_PATH) + r'\sudo_pause.bat')
+                         os.path.join(install_dir, 'sudo_pause.bat'))
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\sudo_cd.bat',
-                         os.path.dirname(WINDOWS_PATH) + r'\sudo_cd.bat')
-            set_env_variables_permanently_win({'PATHEXT': '.PY'}, whole_machine=True)
+                         os.path.join(install_dir, 'sudo_cd.bat'))
+            set_env_variables_permanently_win({'PATHEXT': '.PY'}, whole_machine=whole_machine)
+            warn_if_native_sudo(install_dir)
             time.sleep(5)
         else:
             runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)

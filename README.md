@@ -61,3 +61,12 @@ Last of all, sudo.py installs itself.
 
     cd <the windows-sudo root directory>\code
     py sudo.py --install-sudo-command`
+
+### Windows 11 note
+
+Recent Windows 11 builds (24H2+) can ship their own native `sudo` command in
+`System32`, which is normally found ahead of this package's version. When you
+run `--install-sudo-command`, it now detects that case and offers to move this
+package's install directory to the front of your PATH so `sudo` keeps
+resolving to this package instead. Answer "n" to leave the native command in
+control.
