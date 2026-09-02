@@ -60,10 +60,6 @@ any command beginning with "salt-" will be run with a pause . . .
 
 `sudo salt-call --local test.version`
 
-(Modern Salt "onedir" installers already put themselves on the PATH -- typically
-under `C:\Program Files\Salt Project\Salt` -- so you shouldn't need to add anything
-by hand. The old default of `C:\Salt` is no longer where Salt installs itself.)
-
 Last of all, sudo.py installs itself.
 
     cd <the windows-sudo root directory>\windows_sudo
