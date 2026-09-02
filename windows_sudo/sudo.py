@@ -206,19 +206,27 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
                 present = ''
                 value_type = winreg.REG_SZ if isinstance(value, str) else \
                     winreg.REG_BINARY if isinstance(value, bool) else winreg.REG_DWORD
-                if not whole_machine and name.upper() == 'PATHEXT':
-                    # Unlike PATH, Windows does NOT concatenate the user and system PATHEXT --
-                    # a user-level PATHEXT completely replaces the system one. Since the user
-                    # has no override yet, seed it with the system definition first, so adding
-                    # ".PY" here doesn't silently drop .EXE/.BAT/.CMD/etc. and break the CLI.
-                    try:
-                        with winreg.OpenKeyEx(
-                                winreg.HKEY_LOCAL_MACHINE,
-                                r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment',
-                                0, winreg.KEY_READ) as system_key:
-                            present, value_type = winreg.QueryValueEx(system_key, name)
-                    except OSError:
-                        pass
+            repaired_missing = []
+            if not whole_machine and name.upper() == 'PATHEXT':
+                # Unlike PATH, Windows does NOT concatenate the user and system PATHEXT --
+                # a user-level PATHEXT completely replaces the system one. Fold in any system
+                # extensions the user-level value is missing (whether it was empty, or was
+                # already reduced to just our own past addition) so we never leave the user
+                # with a PATHEXT that lacks .EXE/.BAT/.CMD/etc. and breaks their CLI.
+                try:
+                    with winreg.OpenKeyEx(
+                            winreg.HKEY_LOCAL_MACHINE,
+                            r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment',
+                            0, winreg.KEY_READ) as system_key:
+                        system_present, _ = winreg.QueryValueEx(system_key, name)
+                except OSError:
+                    system_present = ''
+                have = {e.upper() for e in present.split(';') if e}
+                repaired_missing = [e for e in system_present.split(';') if e and e.upper() not in have]
+                if repaired_missing:
+                    present = ';'.join([e for e in present.split(';') if e] + repaired_missing)
+                    print('Repairing {} -- restoring missing system extension(s): {}'.format(
+                        name, ', '.join(repaired_missing)))
             print('old value was {} = {}'.format(name, present))
             if name.upper() in ['PATH', 'PATHEXT']:
                 elements = [e for e in present.upper().split(';') if e]
@@ -233,9 +241,11 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
                         print('Element "{}" was not found in {}'.format(value, name))
                         continue
                 else:  # adding a path element
-                    if value.upper() in elements:
+                    if value.upper() in elements and not repaired_missing:
                         print('Value {} already in {}'.format(value, present))
                         continue
+                    elif value.upper() in elements:
+                        pass  # already present, but still need to write back the repaired value
                     else:
                         print('"{}" will not be entirely changed. "{}" will be appended at the end.'.format(
                             name, value))

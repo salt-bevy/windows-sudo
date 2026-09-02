@@ -1,2 +1,1 @@
-cd windows_sudo
-py -3 sudo.py --install-sudo-command
+py -3 windows_sudo\sudo.py --install-sudo-command
