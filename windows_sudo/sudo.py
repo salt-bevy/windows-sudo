@@ -372,7 +372,7 @@ def test(command=None):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1 or sys.argv[1] in ["--help", "-h", "su", "/?", "/help"]:
-        print('''usage:
+        print(r'''usage:
          sudo <command> <arguments> # will run <command> with elevated priviledges
          sudo --pause <cmd> <args>  # will keep the command screen open until you hit a key
          sudo salt-xxx <cmd> . . .  # will call salt-xxx (from wherever it's installed) and then pause
