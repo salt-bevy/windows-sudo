@@ -13,7 +13,6 @@ requires = ["setuptools>65.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {"windows_sudo" = "code"}
 packages = ["windows_sudo"]
 
 [tool.setuptools.package-data]

@@ -62,7 +62,7 @@ any command beginning with "salt-" will be run with a pause . . .
 
 Last of all, sudo.py installs itself.
 
-    cd <the windows-sudo root directory>\code
+    cd <the windows-sudo root directory>\windows_sudo
     py sudo.py --install-sudo-command`
 
 ### Windows 11 note
