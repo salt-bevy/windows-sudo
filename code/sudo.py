@@ -42,7 +42,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-VERSION = 1.7
+__version__ = '1.7.0'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 
@@ -384,7 +384,7 @@ if __name__ == "__main__":
          sudo cmd  # starts an Administrator command window
          ''')
     elif sys.argv[1] == "--version":
-        print('sudo version', VERSION)
+        print('sudo version', __version__)
     elif sys.argv[1] == "--test":
         print('......testing.......')
         test(sys.argv)

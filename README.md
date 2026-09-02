@@ -8,6 +8,9 @@ Like the Linux "sudo" command, but for Windows. Uses Python and pywin32 to run A
 3. `install_sudo.bat`
 4. Log off and back on, to make .py files valid path extensions. Until then, use explicit "sudo.py".
 
+Alternatively, install the package from PyPI (`pip install windows-sudo`) and run
+`py -m windows_sudo.sudo --install-sudo-command` in place of steps 2-3 above.
+
 ### Operation
 
 Usually . . .
