@@ -441,6 +441,7 @@ if __name__ == "__main__":
          sudo --set-user-env="'arg1': 'val1','arg2': 'val2'" # adds values to the user's PERMANENT environment vars
          sudo --set-system-env="arg1: val1, arg2: val2" # adds values to the system's PERMANENT environment vars
          sudo --hosts  # will open your /etc/hosts file for editing (at the weird Windows location)
+         sudo --powershell <command>  # runs <command> in an elevated PowerShell window (stays open)
          sudo --install-sudo-command  # create a runnable copy of itself in C:\Windows
          sudo bash # starts an Administrator Linux-Subsystem-for-Windows window
          sudo cmd  # starts an Administrator command window
@@ -457,6 +458,16 @@ if __name__ == "__main__":
         else:
             call = ['nano', '/etc/hosts']
         runAsAdmin(call)
+    elif sys.argv[1] == "--powershell" and os.name == 'nt':
+        # takes the whole remainder of the command line as one PowerShell command, rather
+        # than routing through sudo_cd.bat -- batch's own quote-handling mangles a command
+        # string with embedded spaces/quotes long before PowerShell ever sees it.
+        command_str = ' '.join(sys.argv[2:])
+        if not command_str:
+            print('usage: sudo --powershell <command>')
+        else:
+            print('Running elevated PowerShell command: {}'.format(command_str))
+            runAsAdmin(['powershell.exe', '-NoExit', '-Command', command_str])
     elif sys.argv[1] == "--install-sudo-command" and os.name == 'nt':
         # a single-user Python install already put its own Scripts dir on the user's PATH,
         # and that directory is writable without elevation -- prefer it over C:\Windows.
