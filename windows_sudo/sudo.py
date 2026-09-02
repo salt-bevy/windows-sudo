@@ -45,6 +45,7 @@ except (ModuleNotFoundError, ImportError):
 __version__ = '1.8.0'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
+PREPEND_PATH_FLAG = "--_prepend-native-sudo-path"  # internal use only, see warn_if_native_sudo()
 
 def has_context():  # we-were-here flag has been set
     '''
@@ -333,7 +334,10 @@ def prepend_path_win(directory, whole_machine=True):
 def warn_if_native_sudo(install_dir):
     '''
     If a native Windows "sudo" is present, warn the user and offer to move `install_dir`
-    ahead of it on the PATH, so this package's "sudo" command wins instead.
+    ahead of it on the PATH, so this package's "sudo" command wins instead. Moving it
+    requires elevation (it edits the system PATH); if we're not already elevated, we
+    relaunch ourselves with a UAC prompt to finish the job in this one step, rather than
+    telling the user to go re-run the installer as Administrator themselves.
     :param install_dir: str, the directory this package's sudo.py was just installed into.
     :return:
     '''
@@ -345,18 +349,18 @@ def warn_if_native_sudo(install_dir):
     print('The system PATH (which includes System32) is always searched before the user')
     print('PATH, so the built-in sudo will normally run instead of this package\'s version')
     print('when you type "sudo" -- even if "{}" is on your own PATH.'.format(install_dir))
-    if not isUserAdmin():
-        print('Re-run this installer as Administrator to move "{}" ahead of it'.format(install_dir))
-        print('on the system PATH.')
-        return
     try:
         answer = input('Put this "windows-sudo" version ahead of the native one on the system PATH? [y/N] ')
     except EOFError:
         answer = 'n'
-    if answer.strip().lower().startswith('y'):
+    if not answer.strip().lower().startswith('y'):
+        print('Leaving PATH unchanged. The native "sudo" will take precedence over this package.')
+        return
+    if isUserAdmin():
         prepend_path_win(install_dir, whole_machine=True)
     else:
-        print('Leaving PATH unchanged. The native "sudo" will take precedence over this package.')
+        print('Elevation is required to modify the system PATH -- requesting it now...')
+        runAsAdmin([os.path.abspath(__file__), PREPEND_PATH_FLAG + '=' + install_dir], python_shell=True)
 
 
 def test(command=None):
@@ -431,6 +435,12 @@ if __name__ == "__main__":
             time.sleep(5)
         else:
             runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)
+    elif any([arg.startswith(PREPEND_PATH_FLAG) for arg in sys.argv]) and os.name == 'nt':
+        # internal: the elevated re-launch that warn_if_native_sudo() spawns to move an
+        # install dir ahead of the native sudo.exe on the system PATH.
+        flagged_arg = next(arg for arg in sys.argv if arg.startswith(PREPEND_PATH_FLAG))
+        prepend_path_win(flagged_arg.split('=', 1)[1], whole_machine=True)
+        time.sleep(5)
     elif any([arg.startswith("--set-system-env") for arg in sys.argv]) and os.name == 'nt':
         if isUserAdmin():
             ctx = get_context("--set-system-env")
