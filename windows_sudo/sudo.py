@@ -207,8 +207,8 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
                     winreg.REG_BINARY if isinstance(value, bool) else winreg.REG_DWORD
             print('old value was {} = {}'.format(name, present))
             if name.upper() in ['PATH', 'PATHEXT']:
-                elements = present.upper().split(';')
-                case_elements = present.split(';')
+                elements = [e for e in present.upper().split(';') if e]
+                case_elements = [e for e in present.split(';') if e]
                 if value.startswith('-'):  # remove a path element
                     value = value[1:]  # remove the '-'
                     try:
