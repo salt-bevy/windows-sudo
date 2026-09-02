@@ -205,6 +205,19 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
                 present = ''
                 value_type = winreg.REG_SZ if isinstance(value, str) else \
                     winreg.REG_BINARY if isinstance(value, bool) else winreg.REG_DWORD
+                if not whole_machine and name.upper() == 'PATHEXT':
+                    # Unlike PATH, Windows does NOT concatenate the user and system PATHEXT --
+                    # a user-level PATHEXT completely replaces the system one. Since the user
+                    # has no override yet, seed it with the system definition first, so adding
+                    # ".PY" here doesn't silently drop .EXE/.BAT/.CMD/etc. and break the CLI.
+                    try:
+                        with winreg.OpenKeyEx(
+                                winreg.HKEY_LOCAL_MACHINE,
+                                r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment',
+                                0, winreg.KEY_READ) as system_key:
+                            present, value_type = winreg.QueryValueEx(system_key, name)
+                    except OSError:
+                        pass
             print('old value was {} = {}'.format(name, present))
             if name.upper() in ['PATH', 'PATHEXT']:
                 elements = [e for e in present.upper().split(';') if e]
