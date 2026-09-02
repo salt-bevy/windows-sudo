@@ -375,7 +375,7 @@ if __name__ == "__main__":
         print('''usage:
          sudo <command> <arguments> # will run <command> with elevated priviledges
          sudo --pause <cmd> <args>  # will keep the command screen open until you hit a key
-         sudo salt-xxx <cmd> . . .  # will call a command from C:\Salt\salt-xxx and then pause
+         sudo salt-xxx <cmd> . . .  # will call salt-xxx (from wherever it's installed) and then pause
          sudo --set-user-env="'arg1': 'val1','arg2': 'val2'" # adds values to the user's PERMANENT environment vars
          sudo --set-system-env="arg1: val1, arg2: val2" # adds values to the system's PERMANENT environment vars
          sudo --hosts  # will open your /etc/hosts file for editing (at the weird Windows location)

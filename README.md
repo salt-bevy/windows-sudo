@@ -47,18 +47,22 @@ To remove environment variables . . .
 
 `sudo --set-user-env="arg: None"`
 
-Environment variables "PATH" and "PATHEXT" are a special case, and append their argument to the path. So, to add "C:\Salt" to the search path, use . . .
+Environment variables "PATH" and "PATHEXT" are a special case, and append their argument to the path. So, to add "C:\Some\Directory" to the search path, use . . .
 
-`sudo --set-system-env="PATH: C:\Salt"`
+`sudo --set-system-env="PATH: C:\Some\Directory"`
 
 To remove items from the PATH or PATHEXT, prepend the name with a dash . . .
 
-`sudo --set-system-env="PATH -C:\Salt"`
+`sudo --set-system-env="PATH -C:\Some\Directory"`
 
 For lazy systems administrators who use [Salt](https://saltproject.io/), 
 any command beginning with "salt-" will be run with a pause . . .
 
 `sudo salt-call --local test.version`
+
+(Modern Salt "onedir" installers already put themselves on the PATH -- typically
+under `C:\Program Files\Salt Project\Salt` -- so you shouldn't need to add anything
+by hand. The old default of `C:\Salt` is no longer where Salt installs itself.)
 
 Last of all, sudo.py installs itself.
 
