@@ -43,7 +43,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-__version__ = '2.0.0.rc3'
+__version__ = '2.0.0.rc4'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 PREPEND_PATH_FLAG = "--_prepend-native-sudo-path"  # internal use only, see warn_if_native_sudo()
@@ -409,7 +409,7 @@ def warn_if_native_sudo(install_dir):
         runAsAdmin([os.path.abspath(__file__), PREPEND_PATH_FLAG + '=' + install_dir], python_shell=True)
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) == 1 or sys.argv[1] in ["--help", "-h", "su", "/?", "/help"]:
         print(r'''usage:
          sudo <command> <arguments> # will run <command> with elevated priviledges
@@ -521,3 +521,22 @@ if __name__ == "__main__":
         cwd = os.getcwd()
         sys.argv.insert(2, cwd)
         runAsAdmin(sys.argv[1:])
+
+
+def install_entry_point():
+    '''
+    Target for the "windows-sudo-install" console script (see pyproject.toml). pip can
+    install a small generated shim for this automatically, but -- unlike a classic
+    setup.py install-time hook -- it can't run arbitrary code during "pip install"
+    itself (that path only ever fires for a source/sdist build, not the prebuilt wheel
+    "pip install windows-sudo" actually uses). So this is the one command a user runs
+    once, by hand, after "pip install windows-sudo", equivalent to running
+    "sudo.py --install-sudo-command" directly.
+    :return:
+    '''
+    sys.argv = [sys.argv[0], '--install-sudo-command']
+    main()
+
+
+if __name__ == "__main__":
+    main()

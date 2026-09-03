@@ -8,6 +8,13 @@ dependencies = ['pywin32; sys_platform == "win32"', 'pyyaml']
 readme = 'README.md'
 dynamic = ['version']
 
+[project.scripts]
+# pip installs a small generated shim for this automatically (unlike a classic
+# setup.py install-time hook, which doesn't run for a wheel install) -- it's the one
+# command a user runs, once, after "pip install windows-sudo". See sudo.py's
+# install_entry_point().
+windows-sudo-install = 'windows_sudo.sudo:install_entry_point'
+
 [build-system]
 requires = ["setuptools>65.0.0", "wheel"]
 build-backend = "setuptools.build_meta"

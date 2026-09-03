@@ -4,16 +4,20 @@ Like the Linux "sudo" command, but for Windows. Uses Python and pywin32 to run A
 ### Installation
 
 1. Install [Python 3](https://www.python.org/downloads/) using **for all users** and .
-2. `py -m pip install pywin32 pyyaml`
-3. `install_sudo.bat`
+2. `pip install windows-sudo`
+3. `windows-sudo-install`
+
+   (pip can install that last command automatically as part of step 2 -- it can't
+   *run* it for you, since a `pip install` from a prebuilt wheel never executes
+   arbitrary code, only `windows-sudo-install` itself can.)
 4. Open a new cmd window -- `sudo` works there immediately (it installs a `sudo.bat`
    launcher, so no `.py` file association or PATHEXT change is needed). The one
    exception: if it just moved a native Windows `sudo.exe` on the system PATH (see
    the Windows 11 note below), log off and back on for *that* change to take effect
    everywhere.
 
-Alternatively, install the package from PyPI (`pip install windows-sudo`) and run
-`py -m windows_sudo.sudo --install-sudo-command` in place of steps 2-3 above.
+Alternatively, to run from a source checkout instead: `py -m pip install pywin32
+pyyaml`, then `install_sudo.bat` in place of steps 2-3 above.
 
 ### Operation
 
