@@ -43,7 +43,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-__version__ = '2.0.0.rc4'
+__version__ = '2.0.0'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 PREPEND_PATH_FLAG = "--_prepend-native-sudo-path"  # internal use only, see warn_if_native_sudo()
