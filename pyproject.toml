@@ -1,0 +1,44 @@
+[project]
+name = 'windows-sudo'
+
+description = 'Like the Linux "sudo" command, but for Windows. Uses pywin32 to run elevated (Administrator) commands.'
+authors = [{name = 'Preston Landers'}, {name = 'Vernon Cole', email = 'vernondcole@gmail.com'}, {name = 'Claude Sonnet 5'}]
+license = {file = 'LICENSE'}
+dependencies = ['pywin32; sys_platform == "win32"', 'pyyaml']
+readme = 'README.md'
+dynamic = ['version']
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Python Software Foundation License",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Utilities"
+]
+
+[project.scripts]
+# pip installs a small generated shim for this automatically (unlike a classic
+# setup.py install-time hook, which doesn't run for a wheel install) -- it's the one
+# command a user runs, once, after "pip install windows-sudo". See sudo.py's
+# install_entry_point().
+windows-sudo-install = 'windows_sudo.sudo:install_entry_point'
+
+[project.urls]
+Repository = "https://github.com/salt-bevy/windows-sudo.git"
+Issues = "https://github.com/salt-bevy/windows-sudo/issues"
+
+[build-system]
+requires = ["setuptools>65.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["windows_sudo"]
+
+[tool.setuptools.package-data]
+windows_sudo = ["*.bat"]
+
+[tool.setuptools.dynamic]
+version = {attr = "windows_sudo.sudo.__version__"}
+
