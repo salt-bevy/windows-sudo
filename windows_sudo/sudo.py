@@ -5,7 +5,7 @@
 # (C) COPYRIGHT © Preston Landers 2010
 # Released under the same license as Python 2.6.5
 #
-# Python3 update and extensive changes by: Vernon Cole 2018, 2019, 2020
+# Python3 update and extensive changes by: Vernon Cole 2018, 2019, 2020, 2026
 
 import sys, os, traceback, time, subprocess, shutil
 
@@ -21,9 +21,10 @@ if os.name == 'nt':
         raise ImportError('PyWin32 module import failure.  Try "py -m pip install pywin32 pyyaml".')
 
 try:
-    # noinspection PyUnresolvedReferences
-    from helpers.argv_quote import quote
-except (ModuleNotFoundError, ImportError):
+    # imported as part of the windows_sudo package (e.g. under pytest)
+    from .argv_quote import quote
+except ImportError:
+    # run as a standalone script, e.g. the flat copy installed onto PATH
     # noinspection PyUnresolvedReferences
     from argv_quote import quote
 
@@ -42,7 +43,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-__version__ = '1.8.0'
+__version__ = '2.0.0.rc1'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 PREPEND_PATH_FLAG = "--_prepend-native-sudo-path"  # internal use only, see warn_if_native_sudo()
@@ -408,30 +409,6 @@ def warn_if_native_sudo(install_dir):
         runAsAdmin([os.path.abspath(__file__), PREPEND_PATH_FLAG + '=' + install_dir], python_shell=True)
 
 
-def test(command=None):
-    try:
-        if isinstance(command, str):
-            command = command.split()
-        if "--test" in command:
-            command.remove("--test")
-    except TypeError:
-        pass
-    if not isUserAdmin():
-        print("You're not an admin. You are running PID={} with command-->{}".format(os.getpid(), command))
-        if command is not None:
-            return_code = runAsAdmin(command[1:])
-    else:
-        print("You ARE an admin. You are running PID={} with command-->{}".format(os.getpid(), command))
-        if command is not None and len(command) > 1:
-            # noinspection PyUnresolvedReferences
-            return_code = subprocess.call(quote(*command[1:]), shell=True)
-        else:
-            return_code = 0
-        time.sleep(2)
-        input('Press Enter to exit.')
-    return return_code
-
-
 if __name__ == "__main__":
     if len(sys.argv) == 1 or sys.argv[1] in ["--help", "-h", "su", "/?", "/help"]:
         print(r'''usage:
@@ -448,9 +425,6 @@ if __name__ == "__main__":
          ''')
     elif sys.argv[1] == "--version":
         print('sudo version', __version__)
-    elif sys.argv[1] == "--test":
-        print('......testing.......')
-        test(sys.argv)
     elif sys.argv[1] == "--hosts":
         print('....... NEXT, a useful example ... editing the "etc/hosts" file ........')
         if os.name == 'nt':

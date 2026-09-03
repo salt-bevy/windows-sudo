@@ -73,3 +73,20 @@ run `--install-sudo-command`, it now detects that case and offers to move this
 package's install directory to the front of your PATH so `sudo` keeps
 resolving to this package instead. Answer "n" to leave the native command in
 control.
+
+### Testing
+
+An automated go/no-go suite covers everything that needs no elevation
+(CLI smoke tests, arg parsing, quoting, etc.) . . .
+
+`py -m pytest tests/`
+
+For the elevated behavior itself, which only a human can judge, some toy
+scripts are provided for interactive testing under `sudo` . . .
+
+    sudo tests\manual\toy.py
+    sudo tests\manual\toy.bat
+    sudo --powershell ".\tests\manual\toy.ps1"
+
+Each one reports its working directory, arguments, and whether it ended up
+elevated, then waits for a keypress so you can read the result.
