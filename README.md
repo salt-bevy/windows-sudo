@@ -1,23 +1,31 @@
 # windows-sudo
 Like the Linux "sudo" command, but for Windows. Uses Python and pywin32 to run Administrator code.
 
+(It will, theoretically, also actually run on Linux: but what would be the point?)
+
 ### Installation
 
-1. Install [Python 3](https://www.python.org/downloads/) using **for all users** and .
+1. Install [Python 3](https://www.python.org/downloads/) (either **for all users** or **single user**) and .
 2. `pip install windows-sudo`
 3. `windows-sudo-install`
+4. Answer "Y" to the query about modifying PATH.
 
-   (pip can install that last command automatically as part of step 2 -- it can't
+   (pip will install the `windows-sudo-install` command automatically as part of step 2 -- but it can't
    *run* it for you, since a `pip install` from a prebuilt wheel never executes
-   arbitrary code, only `windows-sudo-install` itself can.)
+   arbitrary code, only `windows-sudo-install` itself can. It will request elevatation when needed.)
 4. Open a new cmd window -- `sudo` works there immediately (it installs a `sudo.bat`
    launcher, so no `.py` file association or PATHEXT change is needed). The one
-   exception: if it just moved a native Windows `sudo.exe` on the system PATH (see
+   exception: if it just moved the native Windows `sudo.exe` on the system PATH (see
    the Windows 11 note below), log off and back on for *that* change to take effect
    everywhere.
 
 Alternatively, to run from a source checkout instead: `py -m pip install pywin32
 pyyaml`, then `install_sudo.bat` in place of steps 2-3 above.
+
+During installation, it will offer to move the Python script directory in PATH ahead of the directory which contains
+Windows 11 *sudo.exe*. If you do not select that option, you will always need to type `sudo.bat`
+in order to run this utility.
+IMHO, this one has much better features.
 
 ### Operation
 
@@ -36,7 +44,7 @@ To pause the Administrator window so you can read the messages before they disap
 
 ### Special commands
 
-To edit the goofy Windows version of /etc/hosts . . .
+To edit the hard-to-find Windows version of /etc/hosts . . .
 
 `sudo --hosts`
 

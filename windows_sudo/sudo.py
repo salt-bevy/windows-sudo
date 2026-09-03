@@ -43,7 +43,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-__version__ = '2.0.0'
+__version__ = '2.0.1'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 PREPEND_PATH_FLAG = "--_prepend-native-sudo-path"  # internal use only, see warn_if_native_sudo()
@@ -421,6 +421,7 @@ def main():
             (For other environment variables, use "'<variable_name>': None" to delete it.)
          sudo --hosts  # will open your /etc/hosts file for editing (at the weird Windows location)
          sudo --powershell <command>  # runs <command> in an elevated PowerShell window (stays open)
+         sudo --ps <command>  # shortcut for --powershell
          sudo --install-sudo-command  # create a runnable copy of itself in C:\Windows
          sudo bash # starts an Administrator Linux-Subsystem-for-Windows window
          sudo cmd  # starts an Administrator command window
@@ -435,13 +436,13 @@ def main():
         else:
             call = ['nano', '/etc/hosts']
         runAsAdmin(call)
-    elif sys.argv[1] == "--powershell" and os.name == 'nt':
+    elif sys.argv[1] in ("--powershell", "--ps") and os.name == 'nt':
         # takes the whole remainder of the command line as one PowerShell command, rather
         # than routing through sudo_cd.bat -- batch's own quote-handling mangles a command
         # string with embedded spaces/quotes long before PowerShell ever sees it.
         command_str = ' '.join(sys.argv[2:])
         if not command_str:
-            print('usage: sudo --powershell <command>')
+            print('usage: sudo --powershell <command>  (or: sudo --ps <command>)')
         else:
             print('Running elevated PowerShell command: {}'.format(command_str))
             runAsAdmin(['powershell.exe', '-NoExit', '-Command', command_str])
