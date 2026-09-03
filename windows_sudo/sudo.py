@@ -43,7 +43,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-__version__ = '2.0.1'
+__version__ = '2.0.2'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 PREPEND_PATH_FLAG = "--_prepend-native-sudo-path"  # internal use only, see warn_if_native_sudo()
@@ -471,14 +471,6 @@ def main():
             with open(sudo_bat_path, 'w') as f:
                 f.write('@echo off\r\n"{}" "{}" %*\r\n'.format(sys.executable, WINDOWS_PATH))
             print('Wrote "{}"'.format(sudo_bat_path))
-            # An older version of this installer added ".PY" to PATHEXT, and (on a machine
-            # that hit the now-fixed PATHEXT-repair bug) could leave it sorted AHEAD of
-            # ".BAT" -- e.g. ".PY;.COM;.EXE;.BAT;...". Directory-first/extension-second
-            # PATHEXT resolution means a leftover ".PY" ahead of ".BAT" makes bare "sudo"
-            # still prefer the (association-dependent, possibly broken) sudo.py over the
-            # sudo.bat above. Since sudo.bat needs no PATHEXT entry at all, clean up any
-            # leftover ".PY" here -- a no-op if it was never added.
-            set_env_variables_permanently_win({'PATHEXT': '-.PY'}, whole_machine=whole_machine)
             warn_if_native_sudo(install_dir)
             print()
             print('"sudo" is ready to use in any NEW cmd window -- no logoff needed for that.')
