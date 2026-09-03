@@ -294,60 +294,6 @@ def user_python_scripts_dir():
     return scripts_dir if os.path.isdir(scripts_dir) else None
 
 
-def py_association_command():
-    '''
-    Look up the effective (merged HKCU+HKLM) command line Windows would use to run a bare
-    ".py" file -- the same lookup cmd.exe does internally when PATHEXT-resolving "sudo" to
-    "sudo.py".
-    :return: str or None, e.g. '"C:\\...\\python.exe" "%1" %*', or None if there is no
-             association at all.
-    '''
-    try:
-        with winreg.OpenKeyEx(winreg.HKEY_CLASSES_ROOT, '.py', 0, winreg.KEY_READ) as key:
-            progid, _ = winreg.QueryValueEx(key, '')
-    except OSError:
-        return None
-    try:
-        with winreg.OpenKeyEx(winreg.HKEY_CLASSES_ROOT,
-                              r'{}\shell\open\command'.format(progid), 0, winreg.KEY_READ) as key:
-            command, _ = winreg.QueryValueEx(key, '')
-    except OSError:
-        return None
-    return command
-
-
-def ensure_py_association():
-    '''
-    PATHEXT alone only tells cmd.exe that ".py" is an executable extension -- it still
-    needs a working ".py" file association to know what to actually run. Some Python
-    installs never register one at all (seen with the newer per-version "Python Install
-    Manager" layout under %LocalAppData%\\Python\\pythoncore-*, which expects you to type
-    "py script.py" rather than relying on a file association): PATHEXT-resolving "sudo" to
-    "sudo.py" then silently does nothing at all -- no window, no output, no error -- even
-    though "py -3 sudo.py" works fine directly. Others point ".py" at the windowless
-    pythonw.exe instead of python.exe, which is just as invisible.
-
-    Fixes it at the user level (HKCU\\Software\\Classes), which needs no elevation and
-    takes priority over any HKLM association in the merged view cmd.exe actually uses.
-    :return:
-    '''
-    command = py_association_command()
-    working = False
-    if command:
-        exe_path = command.split('"')[1] if command.startswith('"') else command.split()[0]
-        working = os.path.isfile(exe_path) and os.path.basename(exe_path).lower() != 'pythonw.exe'
-    if working:
-        return
-    print('No working ".py" file association found (or it pointed at the windowless')
-    print('pythonw.exe) -- creating one for the current user, pointed at "{}".'.format(sys.executable))
-    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r'Software\Classes\.py') as key:
-        winreg.SetValueEx(key, '', 0, winreg.REG_SZ, 'Python.File')
-    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r'Software\Classes\Python.File\shell\open\command') as key:
-        winreg.SetValueEx(key, '', 0, winreg.REG_SZ, '"{}" "%1" %*'.format(sys.executable))
-    win32gui.SendMessageTimeout(win32con.HWND_BROADCAST, win32con.WM_SETTINGCHANGE, 0, 'Environment',
-                                win32con.SMTO_ABORTIFHUNG, 1000)
-
-
 def native_sudo_path():
     '''
     Windows 11 (24H2+) can ship its own built-in "sudo.exe" in System32, which will shadow
@@ -514,12 +460,21 @@ if __name__ == "__main__":
                          os.path.join(install_dir, 'sudo_pause.bat'))
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\sudo_cd.bat',
                          os.path.join(install_dir, 'sudo_cd.bat'))
-            set_env_variables_permanently_win({'PATHEXT': '.PY'}, whole_machine=whole_machine)
-            ensure_py_association()
+            # A generated sudo.bat, not "sudo" + PATHEXT's ".PY", is what actually gets
+            # found and run -- ".bat" is already in the default PATHEXT, so this needs no
+            # PATHEXT change at all, and completely sidesteps the ".py" file association
+            # (which can be missing entirely on some Python installs, or get silently
+            # overridden by Windows' own "Open With" / UserChoice picker even after we set
+            # it correctly -- both seen in practice, both invisible to us to fix reliably).
+            sudo_bat_path = os.path.join(install_dir, 'sudo.bat')
+            with open(sudo_bat_path, 'w') as f:
+                f.write('@echo off\r\n"{}" "{}" %*\r\n'.format(sys.executable, WINDOWS_PATH))
+            print('Wrote "{}"'.format(sudo_bat_path))
             warn_if_native_sudo(install_dir)
             print()
-            print('NOTE: a new window is not enough by itself -- log off and back on before')
-            print('testing "sudo", so every process picks up the updated PATH/PATHEXT.')
+            print('"sudo" is ready to use in any NEW cmd window -- no logoff needed for that.')
+            print('(If a native sudo.exe was just moved on the system PATH above, log off and')
+            print('back on for THAT specific change to reach every process.)')
             try:
                 input('Hit <Enter> to continue . . .')
             except EOFError:
