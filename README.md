@@ -20,7 +20,7 @@ If you are forgetful . . . `sudo --help` or `sudo /?`
 
 To get an interactive Administrator session . . .
 
-`sudo cmd` or `sudo bash`
+`sudo cmd`, `sudo bash`, or `sudo ps` (PowerShell)
 
 To pause the Administrator window so you can read the messages before they disappear. . .
 
@@ -43,7 +43,7 @@ or
 (the above argument strings are in YAML format, and must be quoted because the spaces
 are part of the syntax.)
 
-To remove environment variables . . .
+To remove an environment variable entirely, set its value to "None" . . .
 
 `sudo --set-user-env="arg: None"`
 
@@ -51,9 +51,15 @@ Environment variables "PATH" and "PATHEXT" are a special case, and append their 
 
 `sudo --set-system-env="PATH: C:\Some\Directory"`
 
-To remove items from the PATH or PATHEXT, prepend the name with a dash . . .
+To remove one item from PATH or PATHEXT specifically (leaving the rest of the
+list alone), prepend a dash to its *value*, not its name . . .
 
-`sudo --set-system-env="PATH -C:\Some\Directory"`
+`sudo --set-system-env="PATH: -C:\Some\Directory"`
+
+Note the two dash forms are not interchangeable: `"PATH: -C:\Some\Directory"`
+removes just that one entry from the PATH list, while `"arg: None"` deletes
+the whole "arg" variable. A leading dash on the variable *name* itself (e.g.
+`"-arg: val"`) is not special -- it is taken literally, as part of the name.
 
 For lazy systems administrators who use [Salt](https://saltproject.io/), 
 any command beginning with "salt-" will be run with a pause . . .

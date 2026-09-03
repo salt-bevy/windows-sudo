@@ -417,11 +417,14 @@ if __name__ == "__main__":
          sudo salt-xxx <cmd> . . .  # will call salt-xxx (from wherever it's installed) and then pause
          sudo --set-user-env="'arg1': 'val1','arg2': 'val2'" # adds values to the user's PERMANENT environment vars
          sudo --set-system-env="arg1: val1, arg2: val2" # adds values to the system's PERMANENT environment vars
+            (note: "PATH" and "PATHEXT" args are special. "val" adds a path element. "-val" removes it.)
+            (For other environment variables, use "'<variable_name>': None" to delete it.)
          sudo --hosts  # will open your /etc/hosts file for editing (at the weird Windows location)
          sudo --powershell <command>  # runs <command> in an elevated PowerShell window (stays open)
          sudo --install-sudo-command  # create a runnable copy of itself in C:\Windows
          sudo bash # starts an Administrator Linux-Subsystem-for-Windows window
          sudo cmd  # starts an Administrator command window
+         sudo ps   # starts an Administrator PowerShell window
          ''')
     elif sys.argv[1] == "--version":
         print('sudo version', __version__)
@@ -488,6 +491,8 @@ if __name__ == "__main__":
         ctx = get_context("--set-user-env")
         set_env_variables_permanently_win(ctx, whole_machine=False)
     else:  # normal operation
+        if sys.argv[1] == 'ps' and os.name == 'nt':  # convenience alias for an elevated PowerShell
+            sys.argv[1] = 'powershell'
         if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" automatically pause
             sys.argv.insert(1, '--pause')
 
