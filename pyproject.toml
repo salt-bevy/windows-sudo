@@ -1,7 +1,7 @@
 [project]
 name = 'windows-sudo'
 
-description = 'Like the Linux "sudo" command, but for Windows. Uses pywin32 to run elevated (Administrator) commands.'
+description = 'Like the Linux "sudo" command, but for Windows. Uses pywin32 to run elevated (Administrator) commands in your default directory.'
 authors = [{name = 'Preston Landers'}, {name = 'Vernon Cole', email = 'vernondcole@gmail.com'}, {name = 'Claude Sonnet 5'}]
 license = {file = 'LICENSE'}
 dependencies = ['pywin32; sys_platform == "win32"', 'pyyaml']

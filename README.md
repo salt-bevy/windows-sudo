@@ -1,7 +1,13 @@
 # windows-sudo
 Like the Linux "sudo" command, but for Windows. Uses Python and pywin32 to run Administrator code.
 
-(It will, theoretically, also actually run on Linux: but what would be the point?)
+Each command will present a User Account Control prompt to elevate the privilege for that command.
+
+You can also launch an interactive  Command (cmd), bash, or PowerShell window.
+
+The command will execute in the current directory (unlike Window's sudo.exe.)
+
+(This will, theoretically, also actually run on Linux: but what would be the point?)
 
 ### Installation
 
@@ -48,7 +54,7 @@ To edit the hard-to-find Windows version of /etc/hosts . . .
 
 `sudo --hosts`
 
-To set environment variables from the command line . . .
+To permanently set environment variables from the command line . . .
 
 `sudo --set-user-env="arg1: val1, arg2: val2"`
 
@@ -81,6 +87,10 @@ For lazy systems administrators who use [Salt](https://saltproject.io/),
 any command beginning with "salt-" will be run with a pause . . .
 
 `sudo salt-call --local test.version`
+
+Or as a short cut, "--salt" will expand to "salt-call --local", so:
+
+`sudo --salt test.version`
 
 Last of all, sudo.py installs itself.
 
