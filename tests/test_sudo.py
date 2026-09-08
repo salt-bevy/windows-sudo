@@ -92,3 +92,12 @@ def test_user_python_scripts_dir_returns_str_or_none():
 def test_quote_roundtrips_simple_args(args, expected):
     from windows_sudo.argv_quote import quote
     assert quote(*args) == expected
+
+
+def test_salt_flag_expands_to_salt_call_local_and_pauses(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sudo, 'runAsAdmin', lambda cmdLine=None, **kw: calls.append(cmdLine))
+    monkeypatch.setattr(os, 'getcwd', lambda: r'C:\somewhere')
+    monkeypatch.setattr(sys, 'argv', ['sudo.py', '--salt', 'some', 'commands'])
+    sudo.main()
+    assert calls == [['sudo_pause.bat', r'C:\somewhere', 'salt-call', '--local', 'some', 'commands']]

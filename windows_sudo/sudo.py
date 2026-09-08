@@ -43,7 +43,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-__version__ = '2.0.2'
+__version__ = '2.1.0b1'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 PREPEND_PATH_FLAG = "--_prepend-native-sudo-path"  # internal use only, see warn_if_native_sudo()
@@ -415,6 +415,7 @@ def main():
          sudo <command> <arguments> # will run <command> with elevated priviledges
          sudo --pause <cmd> <args>  # will keep the command screen open until you hit a key
          sudo salt-xxx <cmd> . . .  # will call salt-xxx (from wherever it's installed) and then pause
+         sudo --salt <cmd> . . .  # shortcut for "sudo salt-call --local <cmd> . . ." (and then pause)
          sudo --set-user-env="'arg1': 'val1','arg2': 'val2'" # adds values to the user's PERMANENT environment vars
          sudo --set-system-env="arg1: val1, arg2: val2" # adds values to the system's PERMANENT environment vars
             (note: "PATH" and "PATHEXT" args are special. "val" adds a path element. "-val" removes it.)
@@ -504,6 +505,8 @@ def main():
     else:  # normal operation
         if sys.argv[1] == 'ps' and os.name == 'nt':  # convenience alias for an elevated PowerShell
             sys.argv[1] = 'powershell'
+        if sys.argv[1] == '--salt':  # shortcut for "sudo salt-call --local <cmd> . . ."
+            sys.argv[1:2] = ['salt-call', '--local']
         if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" automatically pause
             sys.argv.insert(1, '--pause')
 
