@@ -101,3 +101,27 @@ def test_salt_flag_expands_to_salt_call_local_and_pauses(monkeypatch):
     monkeypatch.setattr(sys, 'argv', ['sudo.py', '--salt', 'some', 'commands'])
     sudo.main()
     assert calls == [['sudo_pause.bat', r'C:\somewhere', 'salt-call', '--local', 'some', 'commands']]
+
+
+def test_ps_pauses_only_on_failure_and_does_not_block_the_parent_shell(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sudo, 'runAsAdmin', lambda cmdLine=None, **kw: calls.append((cmdLine, kw)))
+    monkeypatch.setattr(os, 'getcwd', lambda: r'C:\somewhere')
+    monkeypatch.setattr(sys, 'argv', ['sudo.py', '--ps', 'ls', r'c:\temp'])
+    sudo.main()
+    assert calls == [(['powershell.exe', '-Command',
+                       "Set-Location -LiteralPath 'C:\\somewhere'; ls c:\\temp; "
+                       "if (-not $?) { Read-Host 'Press Enter to continue' }"],
+                      {'wait': False})]
+
+
+def test_ps_pause_waits_for_keypress_then_closes_without_blocking(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sudo, 'runAsAdmin', lambda cmdLine=None, **kw: calls.append((cmdLine, kw)))
+    monkeypatch.setattr(os, 'getcwd', lambda: r'C:\somewhere')
+    monkeypatch.setattr(sys, 'argv', ['sudo.py', '--ps', '--pause', 'ls', r'c:\temp'])
+    sudo.main()
+    assert calls == [(['powershell.exe', '-Command',
+                       "Set-Location -LiteralPath 'C:\\somewhere'; ls c:\\temp; "
+                       "Read-Host 'Press Enter to continue'"],
+                      {'wait': False})]
