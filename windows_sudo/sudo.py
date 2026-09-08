@@ -43,7 +43,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-__version__ = '2.0.2'
+__version__ = '2.1.0'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 PREPEND_PATH_FLAG = "--_prepend-native-sudo-path"  # internal use only, see warn_if_native_sudo()
@@ -415,13 +415,15 @@ def main():
          sudo <command> <arguments> # will run <command> with elevated priviledges
          sudo --pause <cmd> <args>  # will keep the command screen open until you hit a key
          sudo salt-xxx <cmd> . . .  # will call salt-xxx (from wherever it's installed) and then pause
+         sudo --salt <cmd> . . .  # shortcut for "sudo salt-call --local <cmd> . . ." (and then pause)
          sudo --set-user-env="'arg1': 'val1','arg2': 'val2'" # adds values to the user's PERMANENT environment vars
          sudo --set-system-env="arg1: val1, arg2: val2" # adds values to the system's PERMANENT environment vars
             (note: "PATH" and "PATHEXT" args are special. "val" adds a path element. "-val" removes it.)
             (For other environment variables, use "'<variable_name>': None" to delete it.)
          sudo --hosts  # will open your /etc/hosts file for editing (at the weird Windows location)
-         sudo --powershell <command>  # runs <command> in an elevated PowerShell window (stays open)
+         sudo --powershell <command>  # runs <command>; closes right away, but pauses first on failure
          sudo --ps <command>  # shortcut for --powershell
+         sudo --ps --pause <command>  # runs <command>, always waits for a keypress, then closes
          sudo --install-sudo-command  # create a runnable copy of itself in C:\Windows
          sudo bash # starts an Administrator Linux-Subsystem-for-Windows window
          sudo cmd  # starts an Administrator command window
@@ -440,12 +442,34 @@ def main():
         # takes the whole remainder of the command line as one PowerShell command, rather
         # than routing through sudo_cd.bat -- batch's own quote-handling mangles a command
         # string with embedded spaces/quotes long before PowerShell ever sees it.
-        command_str = ' '.join(sys.argv[2:])
+        rest = sys.argv[2:]
+        pause_after = bool(rest) and rest[0] == '--pause'
+        if pause_after:
+            rest = rest[1:]
+        command_str = ' '.join(rest)
         if not command_str:
-            print('usage: sudo --powershell <command>  (or: sudo --ps <command>)')
+            print('usage: sudo --powershell [--pause] <command>  (or: sudo --ps [--pause] <command>)')
         else:
             print('Running elevated PowerShell command: {}'.format(command_str))
-            runAsAdmin(['powershell.exe', '-NoExit', '-Command', command_str])
+            # An elevated child launched via ShellExecuteEx defaults to a system
+            # directory (not the caller's cwd) -- same reason sudo_cd.bat does its own
+            # "cd %1" rather than trusting the default. Do the equivalent here with an
+            # explicit Set-Location, escaping embedded single quotes for the PS literal.
+            cwd = os.getcwd().replace("'", "''")
+            cd_prefix = "Set-Location -LiteralPath '{}'; ".format(cwd)
+            # wait=False either way: the original shell shouldn't block on the elevated
+            # window closing.
+            if pause_after:
+                # Unconditional pause for a keypress after the command finishes, then
+                # let the window close on its own.
+                ps_command = "{}{}; Read-Host 'Press Enter to continue'".format(cd_prefix, command_str)
+            else:
+                # Same "if errorlevel 1 pause" idea as sudo_cd.bat uses for ordinary
+                # elevated commands: close immediately on success, but pause so a
+                # failure's output is readable before the window goes away.
+                ps_command = "{}{}; if (-not $?) {{ Read-Host 'Press Enter to continue' }}".format(
+                    cd_prefix, command_str)
+            runAsAdmin(['powershell.exe', '-Command', ps_command], wait=False)
     elif sys.argv[1] == "--install-sudo-command" and os.name == 'nt':
         # a single-user Python install already put its own Scripts dir on the user's PATH,
         # and that directory is writable without elevation -- prefer it over C:\Windows.
@@ -504,6 +528,8 @@ def main():
     else:  # normal operation
         if sys.argv[1] == 'ps' and os.name == 'nt':  # convenience alias for an elevated PowerShell
             sys.argv[1] = 'powershell'
+        if sys.argv[1] == '--salt':  # shortcut for "sudo salt-call --local <cmd> . . ."
+            sys.argv[1:2] = ['salt-call', '--local']
         if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" automatically pause
             sys.argv.insert(1, '--pause')
 
