@@ -1,0 +1,13 @@
+<Configuration>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>C:\Users\vcole-admin\PycharmProjects\windows-sudo</HostFolder>
+      <SandboxFolder>C:\windows-sudo</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <MemoryInMB>4096</MemoryInMB>
+  <LogonCommand>
+    <Command>cmd /k "cd /d C:\windows-sudo"</Command>
+  </LogonCommand>
+</Configuration>
