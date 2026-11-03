@@ -33,7 +33,10 @@ try:
     import yaml as decoder
     def loader(s):
         return decoder.load(s, decoder.Loader)
-    encoder = decoder.dump
+    def encoder(d):
+        # flow style on one line ("{a: 1, b: 2}"), not yaml.dump's default block style,
+        # which spans several lines and doesn't start with "{"
+        return decoder.dump(d, default_flow_style=True, width=float('inf')).strip()
     decodeError = decoder.YAMLError
 except (ModuleNotFoundError, ImportError):
     # noinspection PyUnresolvedReferences
@@ -43,7 +46,7 @@ except (ModuleNotFoundError, ImportError):
     decodeError = decoder.JSONDecodeError
     print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
 
-__version__ = '2.1.1'
+__version__ = '2.1.2'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 PREPEND_PATH_FLAG = "--_prepend-native-sudo-path"  # internal use only, see warn_if_native_sudo()
@@ -163,11 +166,16 @@ def get_context(flag=ELEVATION_FLAG):
         if arg.startswith(flag):
             try:
                 ctx = ' '.join([arg] + sys.argv[i + 1:]).split('=', 1)[1]
-                if not ctx.startswith('{'):
-                    ctx = '{' + ctx
-                if not ctx.endswith('}'):
-                    ctx += '}'
-                ret = loader(ctx)
+                try:  # a whole mapping, in flow or block style, parses as it is
+                    ret = loader(ctx)
+                except decodeError:
+                    ret = None
+                if not isinstance(ret, dict):  # a bare "'a': 'b','c':'d'" -- supply the braces
+                    if not ctx.startswith('{'):
+                        ctx = '{' + ctx
+                    if not ctx.endswith('}'):
+                        ctx += '}'
+                    ret = loader(ctx)
                 return ret
             except (IndexError, decodeError) as e:
                 print("Decode Error in {}=>{}".format(flag, e))

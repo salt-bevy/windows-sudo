@@ -7,7 +7,11 @@ You can also launch an interactive  Command (cmd), bash, or PowerShell window.
 
 The command will execute in the current directory (unlike Window's sudo.exe.)
 
-(This will, theoretically, also actually run on Linux: but what would be the point?)
+It also works on Linux, where it elevates through the system's own `sudo` and doesn't need
+pywin32 (pip installs pywin32 only on Windows). That lets a Python program use one API to
+re-run itself with elevated privileges, and hand its answers so far to the elevated copy, on
+either system. The [salt-bevy](https://github.com/salt-bevy/salt-bevy) system uses it this way,
+on Linux as well as Windows, to bootstrap Salt on a new machine.
 
 ### Installation
 
