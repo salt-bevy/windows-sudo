@@ -18,6 +18,10 @@ classifiers = [
     "Topic :: Utilities"
 ]
 
+[project.optional-dependencies]
+# for running the tests: pip install -e .[test]
+test = ['pytest']
+
 [project.scripts]
 # pip installs a small generated shim for this automatically (unlike a classic
 # setup.py install-time hook, which doesn't run for a wheel install) -- it's the one
